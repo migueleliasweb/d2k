@@ -1,6 +1,6 @@
 module github.com/migueleliasweb/docker-2-k8s
 
-go 1.16
+go 1.17
 
 require (
 	github.com/deepmap/oapi-codegen v1.8.2
