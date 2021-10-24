@@ -1,16 +1,20 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"os"
+	"net/http"
+	"strings"
 
 	"github.com/go-openapi/loads"
-	flags "github.com/jessevdk/go-flags"
-
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/swag"
+
+	"github.com/migueleliasweb/d2k/src/openapi/gen/models"
 	"github.com/migueleliasweb/d2k/src/openapi/gen/restapi"
 	"github.com/migueleliasweb/d2k/src/openapi/gen/restapi/operations"
 	"github.com/migueleliasweb/d2k/src/openapi/gen/restapi/operations/container"
+	"github.com/migueleliasweb/d2k/src/openapi/gen/restapi/operations/system"
 )
 
 func main() {
@@ -30,34 +34,65 @@ func main() {
 		},
 	)
 
-	server := restapi.NewServer(api)
-	defer server.Shutdown()
+	api.ContainerContainerListHandler = container.ContainerListHandlerFunc(
+		func(clp container.ContainerListParams) middleware.Responder {
+			return container.NewContainerListOK().WithPayload([]*models.ContainerSummaryItems0{
+				{
+					ID:    "123",
+					Names: []string{"container1"},
+					Image: "alpine",
+				},
+			})
+		},
+	)
 
-	parser := flags.NewParser(server, flags.Default)
-	parser.ShortDescription = "Docker Engine API"
-	parser.LongDescription = "The Engine API is an HTTP API served by Docker Engine. It is the API the\nDocker client uses to communicate with the Engine, so everything the Docker\nclient can do can be done with the API.\n\nMost of the client's commands map directly to API endpoints (e.g. `docker ps`\nis `GET /containers/json`). The notable exception is running containers,\nwhich consists of several API calls.\n\n# Errors\n\nThe API uses standard HTTP status codes to indicate the success or failure\nof the API call. The body of the response will be JSON in the following\nformat:\n\n```\n{\n  \"message\": \"page not found\"\n}\n```\n\n# Versioning\n\nThe API is usually changed in each release, so API calls are versioned to\nensure that clients don't break. To lock to a specific version of the API,\nyou prefix the URL with its version, for example, call `/v1.30/info` to use\nthe v1.30 version of the `/info` endpoint. If the API version specified in\nthe URL is not supported by the daemon, a HTTP `400 Bad Request` error message\nis returned.\n\nIf you omit the version-prefix, the current version of the API (v1.41) is used.\nFor example, calling `/info` is the same as calling `/v1.41/info`. Using the\nAPI without a version-prefix is deprecated and will be removed in a future release.\n\nEngine releases in the near future should support this version of the API,\nso your client will continue to work even if it is talking to a newer Engine.\n\nThe API uses an open schema model, which means server may add extra properties\nto responses. Likewise, the server will ignore any extra query parameters and\nrequest body properties. When you write clients, you need to ignore additional\nproperties in responses to ensure they do not break when talking to newer\ndaemons.\n\n\n# Authentication\n\nAuthentication for registries is handled client side. The client has to send\nauthentication details to various endpoints that need to communicate with\nregistries, such as `POST /images/(name)/push`. These are sent as\n`X-Registry-Auth` header as a [base64url encoded](https://tools.ietf.org/html/rfc4648#section-5)\n(JSON) string with the following structure:\n\n```\n{\n  \"username\": \"string\",\n  \"password\": \"string\",\n  \"email\": \"string\",\n  \"serveraddress\": \"string\"\n}\n```\n\nThe `serveraddress` is a domain/IP without a protocol. Throughout this\nstructure, double quotes are required.\n\nIf you have already got an identity token from the [`/auth` endpoint](#operation/SystemAuth),\nyou can just pass this instead of credentials:\n\n```\n{\n  \"identitytoken\": \"9cbaf023786cd7...\"\n}\n```\n"
-	server.ConfigureFlags()
-	for _, optsGroup := range api.CommandLineOptionsGroups {
-		_, err := parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)
-		if err != nil {
-			log.Fatalln(err)
+	api.SystemSystemVersionHandler = system.SystemVersionHandlerFunc(
+		func(svp system.SystemVersionParams) middleware.Responder {
+			return system.NewSystemVersionOK().WithPayload(&models.SystemVersion{
+				APIVersion:    "v1.4.1",
+				MinAPIVersion: "v1.4.1",
+				Version:       "v0.0.1-alpha", // d2k version
+				Components: []*models.ComponentVersion{
+					{
+						Name:    swag.String("D2K"),
+						Version: "v0.0.1-alpha",
+					},
+					{
+						Name:    swag.String("Kubernetes"),
+						Version: "v1.22.2",
+					},
+				},
+			})
+		},
+	)
+
+	api.SystemSystemPingHeadHandler = system.SystemPingHeadHandlerFunc(
+		func(sphp system.SystemPingHeadParams) middleware.Responder {
+			return system.NewSystemPingOK()
+		},
+	)
+
+	api.SystemSystemPingHandler = system.SystemPingHandlerFunc(
+		func(spp system.SystemPingParams) middleware.Responder {
+			return system.NewSystemPingOK()
+		},
+	)
+
+	http.ListenAndServe("127.0.0.1:8080", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		fmt.Println(r.URL.Path, r.Method)
+
+		splittedPath := strings.Split(r.URL.Path, "/")
+
+		if splittedPath[1] == "_ping" || splittedPath[1] == "ping" || (len(splittedPath) >= 3 && strings.HasPrefix(splittedPath[1], "v1.") && splittedPath[1] != "v1.41") {
+			splittedPath[1] = "v1.41"
+
+			fmt.Println("changed to:", strings.Join(splittedPath, "/"))
+			r.URL.Path = strings.Join(splittedPath, "/")
 		}
-	}
 
-	if _, err := parser.Parse(); err != nil {
-		code := 1
-		if fe, ok := err.(*flags.Error); ok {
-			if fe.Type == flags.ErrHelp {
-				code = 0
-			}
-		}
-		os.Exit(code)
-	}
+		rw.Header().Add("Api-Version", "v1.41")
+		fmt.Println("-----------------------------------")
 
-	server.ConfigureAPI()
-
-	if err := server.Serve(); err != nil {
-		log.Fatalln(err)
-	}
-
+		api.Serve(nil).ServeHTTP(rw, r)
+	}))
 }
