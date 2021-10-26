@@ -5,15 +5,15 @@ import (
 	"github.com/migueleliasweb/d2k/src/openapi/gen/models"
 	"github.com/migueleliasweb/d2k/src/openapi/gen/restapi/operations"
 	"github.com/migueleliasweb/d2k/src/openapi/gen/restapi/operations/container"
+	"k8s.io/client-go/kubernetes"
 )
 
-func ApiConfigurator(api *operations.DockerEngineAPIAPI) {
+func ApiConfigurator(
+	clientset kubernetes.Interface,
+	api *operations.DockerEngineAPIAPI,
+) {
 	api.ContainerContainerCreateHandler = container.ContainerCreateHandlerFunc(
-		func(params container.ContainerCreateParams) middleware.Responder {
-			return container.NewContainerCreateCreated().WithPayload(&container.ContainerCreateCreatedBody{
-				ID: "123",
-			})
-		},
+		containerCreateHandler(clientset),
 	)
 
 	api.ContainerContainerListHandler = container.ContainerListHandlerFunc(
