@@ -38,8 +38,13 @@ func main() {
 	// sets up handlers
 	k8s.ApiConfigurator(getClient(), api)
 
-	http.ListenAndServe("127.0.0.1:8080", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+	http.ListenAndServe("127.0.0.1:8081", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		docker141.Docker141Handler(
+			rw,
+			r,
+		)
+
+		docker141.FixOptionalParamsContainerCreate(
 			rw,
 			r,
 		)

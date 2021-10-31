@@ -1,12 +1,6 @@
 package k8s
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/migueleliasweb/d2k/src/openapi/gen/models"
 	"github.com/migueleliasweb/d2k/src/openapi/gen/restapi/operations"
@@ -18,34 +12,6 @@ func ApiConfigurator(
 	clientset kubernetes.Interface,
 	api *operations.DockerEngineAPIAPI,
 ) {
-
-	api.AddMiddlewareFor(
-		http.MethodPost,
-		"/containers/create", // can be auto generated via openapi definition
-		func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-				unmarshalledParams := container.ContainerCreateParams{}
-
-				bodyBytes, err := io.ReadAll(r.Body)
-
-				if err != nil {
-					http.Error(
-						rw,
-						"error reading body",
-						http.StatusInternalServerError,
-					)
-				}
-
-				json.Unmarshal(bodyBytes, &unmarshalledParams)
-
-				r.Body.Close() //  must close now
-				r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-
-				fmt.Println("params", unmarshalledParams)
-			})
-		},
-	)
-
 	api.ContainerContainerCreateHandler = container.ContainerCreateHandlerFunc(
 		containerCreateHandler(clientset),
 	)
@@ -59,6 +25,12 @@ func ApiConfigurator(
 					Image: "alpine",
 				},
 			})
+		},
+	)
+
+	api.ContainerContainerStartHandler = container.ContainerStartHandlerFunc(
+		func(csp container.ContainerStartParams) middleware.Responder {
+			return container.NewContainerStartNoContent()
 		},
 	)
 }
