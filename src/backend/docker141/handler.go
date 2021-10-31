@@ -35,8 +35,8 @@ func Docker141Handler(rw http.ResponseWriter, r *http.Request) {
 // FixOptionalParamsContainerCreate fixes some weird problems with inconsistencies with the
 // 	docker api regarding the ContainerCreate endpoint.
 //
-// The method call `AddMiddlewareFor` can't be used to inject this as for some reason
-// it messes up with the body pointer at some part of the request flow inside go-swagger.
+// The method call `AddMiddlewareFor` can't be used to mutate the request for some reason
+// as it messes up with the request pointer inside go-swagger.
 func FixOptionalParamsContainerCreate(rw http.ResponseWriter, r *http.Request) {
 	if r.Method == ContainerCreateEndpointMatch.HttpMethod &&
 		r.URL.Path == ContainerCreateEndpointMatch.Endpoint {
