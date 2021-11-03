@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-kit/log"
+
+	"github.com/migueleliasweb/d2k/src/logger"
 	"github.com/migueleliasweb/d2k/src/openapi/gen/restapi/operations/container"
 )
 
@@ -21,8 +24,9 @@ var ContainerCreateEndpointMatch = EndpointMatch{
 	Endpoint:   "/v1.41/containers/create",
 }
 
-func Docker141Handler(rw http.ResponseWriter, r *http.Request) {
+func FixPingHandler(l log.Logger, rw http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/_ping" {
+		logger.Debug(l, "fix memory-swappiness param from -1 to 0")
 		r.URL.Path = "/v1.41" + r.URL.Path
 	}
 
@@ -37,7 +41,7 @@ func Docker141Handler(rw http.ResponseWriter, r *http.Request) {
 //
 // The method call `AddMiddlewareFor` can't be used to mutate the request for some reason
 // as it messes up with the request pointer inside go-swagger.
-func FixOptionalParamsContainerCreate(rw http.ResponseWriter, r *http.Request) {
+func FixOptionalParamsContainerCreate(l log.Logger, rw http.ResponseWriter, r *http.Request) {
 	if r.Method == ContainerCreateEndpointMatch.HttpMethod &&
 		r.URL.Path == ContainerCreateEndpointMatch.Endpoint {
 
@@ -62,6 +66,8 @@ func FixOptionalParamsContainerCreate(rw http.ResponseWriter, r *http.Request) {
 
 		// The docker cli instead of sending a `zero`, it sends a `-1`... sigh
 		if *containerCreateBody.HostConfig.MemorySwappiness < 0 {
+			logger.Debug(l, "fix memory-swappiness param from -1 to 0")
+
 			zero := int64(0)
 			containerCreateBody.HostConfig.MemorySwappiness = &zero
 		}
@@ -70,6 +76,7 @@ func FixOptionalParamsContainerCreate(rw http.ResponseWriter, r *http.Request) {
 		// `empty string`, `on-failure`, `unless-stopped` or `always` as valid values fos this field.
 		// So we need to fix `no` to `empty string`.
 		if strings.ToLower(containerCreateBody.HostConfig.RestartPolicy.Name) == "no" {
+			logger.Debug(l, "fix restart policy param from 'no' to '' (empty string)")
 			containerCreateBody.HostConfig.RestartPolicy.Name = ""
 		}
 

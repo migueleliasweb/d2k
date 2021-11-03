@@ -1,6 +1,8 @@
 package k8s
 
 import (
+	"encoding/base64"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/migueleliasweb/d2k/src/openapi/gen/models"
 	"github.com/migueleliasweb/d2k/src/openapi/gen/restapi/operations"
@@ -18,12 +20,12 @@ func ApiConfigurator(
 	)
 
 	api.ContainerContainerListHandler = container.ContainerListHandlerFunc(
-		func(clp container.ContainerListParams) middleware.Responder {
+		func(params container.ContainerListParams) middleware.Responder {
 			return container.NewContainerListOK().WithPayload([]*models.ContainerSummaryItems0{
 				{
 					ID:    "123",
 					Names: []string{"container1"},
-					Image: "alpine",
+					Image: "ubuntu",
 				},
 			})
 		},
@@ -35,6 +37,7 @@ func ApiConfigurator(
 		},
 	)
 
+	// https://docs.docker.com/engine/api/v1.41/#operation/SystemEvents
 	// Type: "container"
 	// Action: "create"
 	// Actor:
@@ -44,13 +47,22 @@ func ApiConfigurator(
 	// 	image: "alpine"
 	// 	name: "my-container"
 	// time: 1461943101
-
+	//
+	// "create" and "start"
 	api.SystemSystemEventsHandler = system.SystemEventsHandlerFunc(
-		func(sep system.SystemEventsParams) middleware.Responder {
+		func(params system.SystemEventsParams) middleware.Responder {
 			return system.NewSystemEventsOK().WithPayload(
 				&system.SystemEventsOKBody{
 					Action: "create",
 					Type:   "container",
+					Actor: &system.SystemEventsOKBodyActor{
+						ID: base64.StdEncoding.EncodeToString([]byte("migueleliasweb/d2k")),
+						Attributes: addCommonLabels(map[string]string{
+							"foo":   "bar",
+							"image": "ubuntu",
+							"name":  "container1",
+						}),
+					},
 				},
 			)
 		},

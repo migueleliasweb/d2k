@@ -48,7 +48,7 @@ func containerCreateHandler(clientset kubernetes.Interface) func(params containe
 		fmt.Println(params.Body.Entrypoint)
 
 		return container.NewContainerCreateCreated().WithPayload(&container.ContainerCreateCreatedBody{
-			ID: "123",
+			ID: "123", // from k8s
 		})
 	}
 }
