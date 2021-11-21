@@ -7,16 +7,28 @@ import (
 	"testing"
 
 	"github.com/docker/docker/client"
-	"github.com/migueleliasweb/d2k/src/backend/docker141"
+	"github.com/go-kit/log"
+
 	"github.com/stretchr/testify/assert"
 )
+
+var api = ConfigureBaseApi()
+var nopLogger = log.NewNopLogger()
 
 func TestIntegrationServerVersion(t *testing.T) {
 	fakeServer := httptest.NewServer(
 		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			docker141.Docker141Handler(rw, r)
+			FixPingHandler(
+				nopLogger,
+				rw,
+				r,
+			)
 
-			api := ConfigureBaseApi()
+			FixOptionalParamsContainerCreate(
+				nopLogger,
+				rw,
+				r,
+			)
 
 			api.Serve(nil).ServeHTTP(rw, r)
 		}),

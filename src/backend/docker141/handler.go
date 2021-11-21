@@ -25,7 +25,7 @@ var ContainerCreateEndpointMatch = EndpointMatch{
 }
 
 func FixPingHandler(l log.Logger, rw http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/_ping" {
+	if r.URL.Path == "/_ping" || r.URL.Path == "/ping" {
 		logger.Debug(l, "fix memory-swappiness param from -1 to 0")
 		r.URL.Path = "/v1.41" + r.URL.Path
 	}
