@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,12 +18,15 @@ func TestDocker141Handler(t *testing.T) {
 		{
 			name: "_ping",
 		},
+		{
+			name: "ping",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeServer := httptest.NewServer(
 				http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-					Docker141Handler(rw, r)
+					FixPingHandler(log.NewNopLogger(), rw, r)
 
 					apiVersionHeaderValue := rw.Header().Values("Api-Version")
 
